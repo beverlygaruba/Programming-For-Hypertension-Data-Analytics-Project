@@ -58,9 +58,24 @@ def drop_exact_duplicates_from_hypertension_data(hypertension_data):
     return hypertension_data
 
 
+def engineer_new_feature_from_existing_data(hypertension_data):
+    if 'Systolic_BP_mmHg' in hypertension_data.columns and 'Diastolic_BP_mmHg' in hypertension_data.columns:
+
+        systolic_bp = hypertension_data['Systolic_BP_mmHg']
+        diastolic_bp = hypertension_data['Diastolic_BP_mmHg']
+        pulse_pressure = systolic_bp - diastolic_bp
+        hypertension_data['Pulse_Pressure'] = pulse_pressure
+
+        mean_arterial_pressure = diastolic_bp + (1 / 3) * pulse_pressure
+        hypertension_data['Mean_Arterial_Pressure'] = mean_arterial_pressure
+
+    return hypertension_data
+
+
 def preprocess_hypertension_data(hypertension_data):
     hypertension_data = preprocess_missing_data(hypertension_data)
     hypertension_data = drop_exact_duplicates_from_hypertension_data(hypertension_data)
+    hypertension_data = engineer_new_feature_from_existing_data(hypertension_data)
 
     return hypertension_data
 
