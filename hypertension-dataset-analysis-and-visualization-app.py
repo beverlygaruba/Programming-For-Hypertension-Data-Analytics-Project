@@ -11,7 +11,7 @@ def export_hypertension_dataset_from_csv(data_set_file_path):
 
 
 
-def preprocess_hypertension_data(hypertension_data):
+def preprocess_missing_data(hypertension_data):
     if 'Creatinine_mg_dL' in hypertension_data.columns:
         creatinine_values = hypertension_data['Creatinine_mg_dL']
         creatinine_median = creatinine_values.median()
@@ -52,6 +52,18 @@ def preprocess_hypertension_data(hypertension_data):
         hypertension_data['cholesterol_mg_dl'] = cholesterol_values.fillna(cholesterol_median)
 
     return hypertension_data
+
+def drop_exact_duplicates_from_hypertension_data(hypertension_data):
+    hypertension_data = hypertension_data.drop_duplicates()
+    return hypertension_data
+
+
+def preprocess_hypertension_data(hypertension_data):
+    hypertension_data = preprocess_missing_data(hypertension_data)
+    hypertension_data = drop_exact_duplicates_from_hypertension_data(hypertension_data)
+
+    return hypertension_data
+
 
 
 if __name__ == '__main__':
