@@ -1,4 +1,6 @@
 import pandas as pd
+import streamlit as st
+
 
 
 def export_hypertension_dataset_from_csv(data_set_file_path):
@@ -80,6 +82,26 @@ def preprocess_hypertension_data(hypertension_data):
     return hypertension_data
 
 
+def show_hypertension_data_overview_page():
+    st.header("Understanding hypertension through the data")
+
+
+
+def show_hypertension_and_age_correlation_page():
+    st.header("How Age Relates to Hypertension")
+
+
+def build_and_display_hypertension_data_page(hypertension_data):
+    st.title("Understanding Hypertension")
+    st.caption("An educational tool")
+
+    sections = st.navigation([
+        st.Page(show_hypertension_data_overview_page, title="Data overview"),
+        st.Page(show_hypertension_and_age_correlation_page, title="How Age Relates to Hypertension"),
+    ])
+    sections.run()
+
+
 
 if __name__ == '__main__':
     print("My hypertension dataset analysis and visualization ")
@@ -88,4 +110,5 @@ if __name__ == '__main__':
     preprocessed_hypertension_data = preprocess_hypertension_data(raw_hypertension_data.copy())
     print(raw_hypertension_data.info)
     print(preprocessed_hypertension_data.info)
+    build_and_display_hypertension_data_page(preprocessed_hypertension_data)
 
