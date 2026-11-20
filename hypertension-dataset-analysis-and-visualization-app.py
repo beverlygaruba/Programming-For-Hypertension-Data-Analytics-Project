@@ -1,6 +1,8 @@
 import pandas as pd
 import streamlit as st
 
+AGE_LABELS = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80+"]
+BMI_LABELS = ["Underweight", "Normal", "Overweight", "Obese"]
 
 
 def export_hypertension_dataset_from_csv(data_set_file_path):
@@ -53,6 +55,10 @@ def preprocess_missing_data(hypertension_data):
         cholesterol_median = cholesterol_values.median()
         hypertension_data['cholesterol_mg_dl'] = cholesterol_values.fillna(cholesterol_median)
 
+    hypertension_data["Age_Group"] = pd.cut(hypertension_data["Age"], bins=[0, 30, 40, 50, 60, 70, 80, 200], right=False, labels=AGE_LABELS).astype(str)
+    hypertension_data["BMI_Class"] = pd.cut(hypertension_data["BMI"], bins=[0, 18.5, 25, 30, 200], right=False, labels=BMI_LABELS).astype(str)
+    hypertension_data["Has_Hypertension"] = (hypertension_data["Hypertension"] == "Yes").astype(int)
+
     return hypertension_data
 
 def drop_exact_duplicates_from_hypertension_data(hypertension_data):
@@ -82,7 +88,7 @@ def preprocess_hypertension_data(hypertension_data):
     return hypertension_data
 
 
-def show_hypertension_data_overview_page():
+def show_hypertension_data_overview_page(preprocessed_hypertension_data):
     st.header("Understanding hypertension through the data")
 
 
@@ -93,10 +99,10 @@ def show_hypertension_and_age_correlation_page():
 
 def build_and_display_hypertension_data_page(hypertension_data):
     st.title("Understanding Hypertension")
-    st.caption("An educational tool")
+    st.caption("")
 
     sections = st.navigation([
-        st.Page(show_hypertension_data_overview_page, title="Data overview"),
+        st.Page(show_hypertension_data_overview_page(preprocessed_hypertension_data), title="Data overview"),
         st.Page(show_hypertension_and_age_correlation_page, title="How Age Relates to Hypertension"),
     ])
     sections.run()
