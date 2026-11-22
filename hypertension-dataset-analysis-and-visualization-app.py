@@ -1,9 +1,21 @@
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 
+
+BP_COLORS = { "Normal": "#2E9E6B","Elevated": "#F2C14E","Stage 1 Hypertension": "#F28C38","Stage 2 Hypertension": "#D64545",}
 AGE_LABELS = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80+"]
 BMI_LABELS = ["Underweight", "Normal", "Overweight", "Obese"]
 
+FEATURE_CATEGORY_ORDER = {"Age_Group": AGE_LABELS,  "BMI_Class": BMI_LABELS,"Gender": ["Female", "Male"],"Salt_Intake": ["Low", "Normal", "High", "Very High", "Unknown"],
+    "Physical_Activity": ["Sedentary", "Light", "Moderate", "Active"],"Alcohol_Consumption": ["Unknown", "Occasional", "Moderate", "Heavy"],
+    "Smoking_Status": ["Never", "Former", "Current"],"Stress_Level": ["Low", "Moderate", "High", "Very High", "Unknown"],
+    "Family_History_HTN": ["No", "Yes"], "BP_Category": list(BP_COLORS),}
+
+LABELS = {
+    "Waist_Circumference_cm": "Waist circumference (cm)", "Sleep_Hours": "Sleep (hours)", "Creatinine_mg_dL": "Creatinine (mg/dL)","Fasting_Glucose_mg_dL": "Fasting glucose (mg/dL)",
+    "Cholesterol_mg_dL": "Cholesterol (mg/dL)", "Systolic_BP_mmHg": "Systolic BP (mmHg)", "Diastolic_BP_mmHg": "Diastolic BP (mmHg)", "Family_History_HTN": "Family history of hypertension",
+}
 
 def export_hypertension_dataset_from_csv(data_set_file_path):
     try:
@@ -28,7 +40,15 @@ def preprocess_missing_data(hypertension_data):
 
     if 'Alcohol_Consumption' in hypertension_data.columns:
         alcohol_values = hypertension_data['Alcohol_Consumption']
-        hypertension_data['Alcohol_Consumption'] = alcohol_values.fillna("None")
+        hypertension_data['Alcohol_Consumption'] = alcohol_values.fillna("Unknown")
+
+    if 'Salt_Intake' in hypertension_data.columns:
+        alcohol_values = hypertension_data['Salt_Intake']
+        hypertension_data['Salt_Intake'] = alcohol_values.fillna("Unknown")
+
+    if 'Stress_Level' in hypertension_data.columns:
+        alcohol_values = hypertension_data['Stress_Level']
+        hypertension_data['Stress_Level'] = alcohol_values.fillna("Unknown")
 
     if 'waist_circumference_cm' in hypertension_data.columns:
         waist_values = hypertension_data['waist_circumference_cm']
@@ -87,9 +107,95 @@ def preprocess_hypertension_data(hypertension_data):
 
     return hypertension_data
 
+def load_and_preprocess_hypertension_data():
+    file_path = "hypertension_dataset_5000.csv"
+    raw_hypertension_data = export_hypertension_dataset_from_csv(file_path)
+    preprocessed_hypertension_data = preprocess_hypertension_data(raw_hypertension_data.copy())
 
-def show_hypertension_data_overview_page(preprocessed_hypertension_data):
-    st.header("Understanding hypertension through the data")
+    return raw_hypertension_data, preprocessed_hypertension_data
+
+
+def show_chart_row(chart1, chart2):
+    col1, col2 = st.columns(2)
+    with col1:
+        chart1()
+    with col2:
+        chart2()
+
+def resolve_column_name(name):
+    return LABELS.get(name, name.replace("_", " "))
+
+
+def show_hypertension_data_overview_page():
+    raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
+
+    st.write("Hypertension is often called the silent killer because it can develop over time without noticeable symptoms. "
+             "It occurs when the force of blood pushing against the walls of your arteries remains consistently too high, "
+             "putting extra strain on your heart and blood vessels. It usually causes no symptoms, yet over time it raises "
+            "the risk of stroke, heart attack, heart failure and kidney disease.\n\n"
+            "Blood Pressure (BP) =  **Systolic Pressure / Diastolic Pressure** ")
+    st.caption("")
+
+    st.dataframe(pd.DataFrame({
+        "Category": ["Normal", "Elevated", "Stage 1 hypertension", "Stage 2 hypertension"],
+        "Systolic (mmHg)": ["below 120", "120 - 129", "130 - 139", "140 or higher"],
+        "Diastolic (mmHg)": ["and below 80", "and below 80", "or 80 - 89", "or 90 or higher"],
+    }), hide_index=True)
+    st.caption("")
+
+    st.subheader("Understanding hypertension through  data")
+    st.write("Total number of patients = ",  f"{len(preprocessed_hypertension_data):,}")
+
+    show_chart_row(
+        lambda: show_bar_chart(preprocessed_hypertension_data, "Age_Group"),
+        lambda: show_pie_chart(preprocessed_hypertension_data, "Gender")
+    )
+    show_bar_chart(preprocessed_hypertension_data, "Salt_Intake", horizontal=True)
+
+    st.subheader("Lifestyle and family history")
+    show_chart_row(
+        lambda: show_bar_chart(preprocessed_hypertension_data, "Physical_Activity"),
+        lambda: show_bar_chart(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
+    )
+    show_chart_row(
+        lambda: show_bar_chart(preprocessed_hypertension_data, "Stress_Level"),
+        lambda: show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
+    )
+
+
+def show_bar_chart(hypertension_data, column, horizontal=False):
+    counts = hypertension_data[column].value_counts().reindex(
+        FEATURE_CATEGORY_ORDER[column], fill_value=0
+    )
+
+    chart = px.bar(
+        x=counts.values if horizontal else counts.index,
+        y=counts.index if horizontal else counts.values,
+        orientation="h" if horizontal else "v",
+        text_auto=True,
+        title=f"Patients by {resolve_column_name(column)}",
+        labels={
+            "x": "Patients" if horizontal else resolve_column_name(column),
+            "y": resolve_column_name(column) if horizontal else "Patients"
+        }
+    )
+
+    chart.update_layout(height=400)
+    st.plotly_chart(chart, use_container_width=True)
+
+
+def show_pie_chart(hypertension_data, column):
+    counts = hypertension_data[column].value_counts().reindex(
+        FEATURE_CATEGORY_ORDER[column], fill_value=0
+    )
+    chart = px.pie(
+        values=counts.values,
+        names=counts.index,
+        title=f"Patients by {resolve_column_name(column)}",
+        hole=0.4
+    )
+    chart.update_layout(height=380)
+    st.plotly_chart(chart, use_container_width=True)
 
 
 
@@ -97,12 +203,12 @@ def show_hypertension_and_age_correlation_page():
     st.header("How Age Relates to Hypertension")
 
 
-def build_and_display_hypertension_data_page(hypertension_data):
+def build_and_display_hypertension_data_page():
     st.title("Understanding Hypertension")
     st.caption("")
 
     sections = st.navigation([
-        st.Page(show_hypertension_data_overview_page(preprocessed_hypertension_data), title="Data overview"),
+        st.Page(show_hypertension_data_overview_page, title="Data overview"),
         st.Page(show_hypertension_and_age_correlation_page, title="How Age Relates to Hypertension"),
     ])
     sections.run()
@@ -110,11 +216,5 @@ def build_and_display_hypertension_data_page(hypertension_data):
 
 
 if __name__ == '__main__':
-    print("My hypertension dataset analysis and visualization ")
-    file_path = "hypertension_dataset_5000.csv"
-    raw_hypertension_data = export_hypertension_dataset_from_csv(file_path)
-    preprocessed_hypertension_data = preprocess_hypertension_data(raw_hypertension_data.copy())
-    print(raw_hypertension_data.info)
-    print(preprocessed_hypertension_data.info)
-    build_and_display_hypertension_data_page(preprocessed_hypertension_data)
+    build_and_display_hypertension_data_page()
 
