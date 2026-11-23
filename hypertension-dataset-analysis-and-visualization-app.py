@@ -211,7 +211,7 @@ def chart_share_with_hypertension(df):
     fig = px.pie(share, names="Status", values="Patients", hole=0.5, color="Status",
                  color_discrete_map={"Hypertension": HTN_COLORS["Yes"],
                                      "No hypertension": HTN_COLORS["No"]},
-                 title="Share of patients with hypertension")
+                 title="Patients with hypertension")
     fig.update_traces(textinfo="percent+label")
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
