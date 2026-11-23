@@ -6,12 +6,11 @@ import plotly.express as px
 BP_COLORS = { "Normal": "#2E9E6B","Elevated": "#F2C14E","Stage 1 Hypertension": "#F28C38","Stage 2 Hypertension": "#D64545",}
 AGE_LABELS = ["18-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80+"]
 BMI_LABELS = ["Underweight", "Normal", "Overweight", "Obese"]
-
+HTN_COLORS = {"Yes": "#E45756", "No": "#2E86AB"}
 FEATURE_CATEGORY_ORDER = {"Age_Group": AGE_LABELS,  "BMI_Class": BMI_LABELS,"Gender": ["Female", "Male"],"Salt_Intake": ["Low", "Normal", "High", "Very High", "Unknown"],
     "Physical_Activity": ["Sedentary", "Light", "Moderate", "Active"],"Alcohol_Consumption": ["Unknown", "Occasional", "Moderate", "Heavy"],
     "Smoking_Status": ["Never", "Former", "Current"],"Stress_Level": ["Low", "Moderate", "High", "Very High", "Unknown"],
     "Family_History_HTN": ["No", "Yes"], "BP_Category": list(BP_COLORS),}
-
 LABELS = {
     "Waist_Circumference_cm": "Waist circumference (cm)", "Sleep_Hours": "Sleep (hours)", "Creatinine_mg_dL": "Creatinine (mg/dL)","Fasting_Glucose_mg_dL": "Fasting glucose (mg/dL)",
     "Cholesterol_mg_dL": "Cholesterol (mg/dL)", "Systolic_BP_mmHg": "Systolic BP (mmHg)", "Diastolic_BP_mmHg": "Diastolic BP (mmHg)", "Family_History_HTN": "Family history of hypertension",
@@ -162,6 +161,12 @@ def show_hypertension_data_overview_page():
         lambda: show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
     )
 
+    st.subheader("Blood pressure")
+    show_chart_row(
+        lambda: chart_share_with_hypertension(preprocessed_hypertension_data),
+        lambda: chart_patients_by_bp_category(preprocessed_hypertension_data)
+    )
+
 
 def show_bar_chart(hypertension_data, column, horizontal=False):
     counts = hypertension_data[column].value_counts().reindex(
@@ -196,6 +201,32 @@ def show_pie_chart(hypertension_data, column):
     )
     chart.update_layout(height=380)
     st.plotly_chart(chart, use_container_width=True)
+
+
+
+def chart_share_with_hypertension(df):
+    share = df["Hypertension"].map({"No": "No hypertension", "Yes": "Hypertension"})
+    share = share.value_counts().reset_index()
+    share.columns = ["Status", "Patients"]
+    fig = px.pie(share, names="Status", values="Patients", hole=0.5, color="Status",
+                 color_discrete_map={"Hypertension": HTN_COLORS["Yes"],
+                                     "No hypertension": HTN_COLORS["No"]},
+                 title="Share of patients with hypertension")
+    fig.update_traces(textinfo="percent+label")
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def chart_patients_by_bp_category(df):
+    counts = df["BP_Category"].value_counts().reindex(FEATURE_CATEGORY_ORDER["BP_Category"], fill_value=0)
+    counts = counts.reset_index()
+    counts.columns = ["BP_Category", "Patients"]
+    fig = px.bar(counts, x="BP_Category", y="Patients", color="BP_Category", text_auto=True,
+                 color_discrete_map=BP_COLORS, title="Patients by blood pressure category",
+                 labels={"BP_Category": ""})
+    fig.update_layout(showlegend=False)
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
 
 
 
