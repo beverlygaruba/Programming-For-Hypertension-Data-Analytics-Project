@@ -74,10 +74,6 @@ def preprocess_missing_data(hypertension_data):
         cholesterol_median = cholesterol_values.median()
         hypertension_data['cholesterol_mg_dl'] = cholesterol_values.fillna(cholesterol_median)
 
-    hypertension_data["Age_Group"] = pd.cut(hypertension_data["Age"], bins=[0, 30, 40, 50, 60, 70, 80, 200], right=False, labels=AGE_LABELS).astype(str)
-    hypertension_data["BMI_Class"] = pd.cut(hypertension_data["BMI"], bins=[0, 18.5, 25, 30, 200], right=False, labels=BMI_LABELS).astype(str)
-    hypertension_data["Has_Hypertension"] = (hypertension_data["Hypertension"] == "Yes").astype(int)
-
     return hypertension_data
 
 def drop_exact_duplicates_from_hypertension_data(hypertension_data):
@@ -95,6 +91,12 @@ def engineer_new_feature_from_existing_data(hypertension_data):
 
         mean_arterial_pressure = diastolic_bp + (1 / 3) * pulse_pressure
         hypertension_data['Mean_Arterial_Pressure'] = mean_arterial_pressure
+
+    hypertension_data["Age_Group"] = pd.cut(hypertension_data["Age"], bins=[0, 30, 40, 50, 60, 70, 80, 200],
+                                                right=False, labels=AGE_LABELS).astype(str)
+    hypertension_data["BMI_Class"] = pd.cut(hypertension_data["BMI"], bins=[0, 18.5, 25, 30, 200], right=False,
+                                                labels=BMI_LABELS).astype(str)
+    hypertension_data["Has_Hypertension"] = (hypertension_data["Hypertension"] == "Yes").astype(int)
 
     return hypertension_data
 
@@ -145,20 +147,26 @@ def show_hypertension_data_overview_page():
     st.subheader("Understanding hypertension through  data")
     st.write("Total number of patients = ",  f"{len(preprocessed_hypertension_data):,}")
 
+
+
+    show_bar_chart(preprocessed_hypertension_data, "Salt_Intake", horizontal=True)
+    show_hypertension_split(preprocessed_hypertension_data, "Salt_Intake")
+
+    show_bar_chart(preprocessed_hypertension_data, "Physical_Activity")
+    show_hypertension_split(preprocessed_hypertension_data, "Physical_Activity")
+
+
+    show_bar_chart(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
+    show_hypertension_split(preprocessed_hypertension_data, "Alcohol_Consumption")
+
+
+    show_bar_chart(preprocessed_hypertension_data, "Stress_Level")
+    show_hypertension_split(preprocessed_hypertension_data, "Stress_Level")
+    show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
+
     show_chart_row(
         lambda: show_bar_chart(preprocessed_hypertension_data, "Age_Group"),
         lambda: show_pie_chart(preprocessed_hypertension_data, "Gender")
-    )
-    show_bar_chart(preprocessed_hypertension_data, "Salt_Intake", horizontal=True)
-
-    st.subheader("Lifestyle and family history")
-    show_chart_row(
-        lambda: show_bar_chart(preprocessed_hypertension_data, "Physical_Activity"),
-        lambda: show_bar_chart(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
-    )
-    show_chart_row(
-        lambda: show_bar_chart(preprocessed_hypertension_data, "Stress_Level"),
-        lambda: show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
     )
 
     st.subheader("Blood pressure")
@@ -167,6 +175,17 @@ def show_hypertension_data_overview_page():
         lambda: chart_patients_by_bp_category(preprocessed_hypertension_data)
     )
 
+def show_hypertension_split(df, column):
+    table = pd.crosstab(df[column], df["Hypertension"], normalize="index") * 100
+    table = table.reindex(FEATURE_CATEGORY_ORDER[column])
+
+    fig = px.bar(table, x=table.index, y=["Yes", "No"], text_auto=".1f",
+                 color_discrete_map=HTN_COLORS,
+                 title=f"Hypertension by {resolve_column_name(column)}",
+                 labels={"x": resolve_column_name(column), "value": "Percentage of patients",
+                         "variable": "Hypertension"})
+    fig.update_layout(height=400, yaxis_range=[0, 100])
+    st.plotly_chart(fig, use_container_width=True)
 
 def show_bar_chart(hypertension_data, column, horizontal=False):
     counts = hypertension_data[column].value_counts().reindex(
