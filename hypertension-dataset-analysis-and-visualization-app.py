@@ -15,6 +15,7 @@ LABELS = {
     "Waist_Circumference_cm": "Waist circumference (cm)", "Sleep_Hours": "Sleep (hours)", "Creatinine_mg_dL": "Creatinine (mg/dL)","Fasting_Glucose_mg_dL": "Fasting glucose (mg/dL)",
     "Cholesterol_mg_dL": "Cholesterol (mg/dL)", "Systolic_BP_mmHg": "Systolic BP (mmHg)", "Diastolic_BP_mmHg": "Diastolic BP (mmHg)", "Family_History_HTN": "Family history of hypertension",
 }
+DATA_NOTE = "*This is an observation from this dataset only, not an established medical fact.*"
 
 def export_hypertension_dataset_from_csv(data_set_file_path):
     try:
@@ -130,11 +131,12 @@ def resolve_column_name(name):
 def show_hypertension_data_overview_page():
     raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
 
-    st.write("Hypertension is often called the silent killer because it can develop over time without noticeable symptoms. "
-             "It occurs when the force of blood pushing against the walls of your arteries remains consistently too high, "
-             "putting extra strain on your heart and blood vessels. It usually causes no symptoms, yet over time it raises "
-            "the risk of stroke, heart attack, heart failure and kidney disease.\n\n"
-            "Blood Pressure (BP) =  **Systolic Pressure / Diastolic Pressure** ")
+    st.write(
+        "Hypertension, or high blood pressure, is often called the \"silent killer\" because it usually causes no symptoms, "
+        "so many people live with it unknowingly. It occurs when the force of blood against the artery walls stays "
+        "consistently too high, straining the heart and blood vessels. Over time, this raises the risk of stroke, "
+        "heart attack, heart failure and kidney disease.\n\n"
+        "Blood Pressure (BP) = **Systolic Pressure / Diastolic Pressure**")
     st.caption("")
 
     st.dataframe(pd.DataFrame({
@@ -144,39 +146,113 @@ def show_hypertension_data_overview_page():
     }), hide_index=True)
     st.caption("")
 
-    st.subheader("Understanding hypertension through  data")
-    st.write("Total number of patients = ",  f"{len(preprocessed_hypertension_data):,}")
+    show_summary_metrics(preprocessed_hypertension_data)
+
+    with st.expander("Who are the patients?", expanded=True):
+        show_chart_row(
+            lambda: show_bar_chart(preprocessed_hypertension_data, "Age_Group"),
+            lambda: show_pie_chart(preprocessed_hypertension_data, "Gender"),
+        )
+        describe_distribution(preprocessed_hypertension_data, "Age_Group")
+        describe_distribution(preprocessed_hypertension_data, "Gender")
+
+        show_chart_row(
+            lambda: chart_share_with_hypertension(preprocessed_hypertension_data),
+            lambda: chart_patients_by_bp_category(preprocessed_hypertension_data),
+        )
+        st.caption(f"Number of patients in each blood pressure category, from normal to stage 2 hypertension. {DATA_NOTE}")
+
+        show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
+        st.caption(f"Share of patients who report a family history of hypertension. {DATA_NOTE}")
 
 
+    with st.expander("What affects hypertension?"):
+        show_factor_section(preprocessed_hypertension_data, "Salt_Intake",  horizontal=True)
+        show_factor_section(preprocessed_hypertension_data, "Physical_Activity")
+        show_factor_section(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
+        show_factor_section(preprocessed_hypertension_data, "Stress_Level")
 
-    show_bar_chart(preprocessed_hypertension_data, "Salt_Intake", horizontal=True)
-    show_hypertension_split(preprocessed_hypertension_data, "Salt_Intake")
-
-    show_bar_chart(preprocessed_hypertension_data, "Physical_Activity")
-    show_hypertension_split(preprocessed_hypertension_data, "Physical_Activity")
-
-
-    show_bar_chart(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
-    show_hypertension_split(preprocessed_hypertension_data, "Alcohol_Consumption")
+    with st.expander("Data quality and preprocessing"):
+        show_data_quality_section(raw_hypertension_data, preprocessed_hypertension_data)
 
 
-    show_bar_chart(preprocessed_hypertension_data, "Stress_Level")
-    show_hypertension_split(preprocessed_hypertension_data, "Stress_Level")
-    show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
+def show_summary_metrics(preprocessed_hypertension_data):
+    total = len(preprocessed_hypertension_data)
+    with_htn = int(preprocessed_hypertension_data["Has_Hypertension"].sum())
 
-    show_chart_row(
-        lambda: show_bar_chart(preprocessed_hypertension_data, "Age_Group"),
-        lambda: show_pie_chart(preprocessed_hypertension_data, "Gender")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total patients", f"{total:,}")
+    col2.metric("Average age", f"{preprocessed_hypertension_data['Age'].mean():.1f}")
+    col3.metric("Average BMI", f"{preprocessed_hypertension_data['BMI'].mean():.1f}")
+    col4.metric("Patients with hypertension", f"{with_htn / total:.1%}")
+
+
+def describe_hypertension_split(preprocessed_hypertension_data, column):
+    rates = preprocessed_hypertension_data.groupby(column)["Has_Hypertension"].mean() * 100
+    rates = rates.drop("Unknown", errors="ignore").dropna()
+    highest, lowest = rates.idxmax(), rates.idxmin()
+    st.caption(
+        f"Hypertension is most common in the **{highest}** group ({rates[highest]:.1f}%) "
+        f"and least common in the **{lowest}** group ({rates[lowest]:.1f}%) "
+        f"for {resolve_column_name(column).lower()}. {DATA_NOTE}"
+    )
+    
+
+def describe_distribution(preprocessed_hypertension_data, column):
+    shares = preprocessed_hypertension_data[column].value_counts(normalize=True) * 100
+    top = shares.idxmax()
+    st.caption(
+        f"For {resolve_column_name(column).lower()}, the largest group is **{top}** ({shares[top]:.1f}% of patients). "
+        f" {DATA_NOTE}"
     )
 
-    st.subheader("Blood pressure")
-    show_chart_row(
-        lambda: chart_share_with_hypertension(preprocessed_hypertension_data),
-        lambda: chart_patients_by_bp_category(preprocessed_hypertension_data)
+
+def show_data_quality_section(raw_hypertension_data, preprocessed_hypertension_data):
+    st.subheader("Data quality and preprocessing")
+
+    duplicates = int(raw_hypertension_data.duplicated().sum())
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Rows in raw data", f"{len(raw_hypertension_data):,}")
+    col2.metric("Exact duplicate rows", f"{duplicates:,}")
+    col3.metric("Rows after cleaning", f"{len(preprocessed_hypertension_data):,}")
+
+    missing = raw_hypertension_data.isna().sum().reset_index()
+    missing.columns = ["Column", "Missing values"]
+    missing["% Missing"] = (missing["Missing values"] / len(raw_hypertension_data) * 100).round(2)
+    st.dataframe(missing, hide_index=True, use_container_width=True)
+
+    st.write(
+        "**What was done during preprocessing**\n\n"
+        "- Missing numeric values (e.g. creatinine, fasting glucose) were filled with the column median, "
+        "which is not affected by extreme values.\n"
+        "- Missing categorical values (alcohol consumption, salt intake, stress level) were labelled "
+        "\"Unknown\" so these patients stay in the analysis.\n"
+        "- Exact duplicate rows were removed.\n"
+        "- New features were created: pulse pressure, mean arterial pressure, age group, BMI class and a "
+        "0/1 hypertension flag."
     )
 
-def show_hypertension_split(df, column):
-    table = pd.crosstab(df[column], df["Hypertension"], normalize="index") * 100
+def show_factor_section(preprocessed_hypertension_data, column, horizontal=False):
+    show_chart_row(
+        lambda: show_bar_chart(preprocessed_hypertension_data, column, horizontal),
+        lambda: show_hypertension_split(preprocessed_hypertension_data, column),
+    )
+    describe_hypertension_split(preprocessed_hypertension_data, column)
+
+def chart_share_with_hypertension(df):
+    share = df["Hypertension"].map({"No": "No hypertension", "Yes": "Hypertension"})
+    share = share.value_counts().reset_index()
+    share.columns = ["Status", "Patients"]
+    fig = px.pie(share, names="Status", values="Patients", hole=0.5, color="Status",
+                 color_discrete_map={"Hypertension": HTN_COLORS["Yes"],
+                                     "No hypertension": HTN_COLORS["No"]},
+                 title="Patients with hypertension")
+    fig.update_traces(textinfo="percent+label")
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+def show_hypertension_split(preprocessed_hypertension_data, column):
+    table = pd.crosstab(preprocessed_hypertension_data[column], preprocessed_hypertension_data["Hypertension"], normalize="index") * 100
     table = table.reindex(FEATURE_CATEGORY_ORDER[column])
 
     fig = px.bar(table, x=table.index, y=["Yes", "No"], text_auto=".1f",
@@ -222,22 +298,8 @@ def show_pie_chart(hypertension_data, column):
     st.plotly_chart(chart, use_container_width=True)
 
 
-
-def chart_share_with_hypertension(df):
-    share = df["Hypertension"].map({"No": "No hypertension", "Yes": "Hypertension"})
-    share = share.value_counts().reset_index()
-    share.columns = ["Status", "Patients"]
-    fig = px.pie(share, names="Status", values="Patients", hole=0.5, color="Status",
-                 color_discrete_map={"Hypertension": HTN_COLORS["Yes"],
-                                     "No hypertension": HTN_COLORS["No"]},
-                 title="Patients with hypertension")
-    fig.update_traces(textinfo="percent+label")
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def chart_patients_by_bp_category(df):
-    counts = df["BP_Category"].value_counts().reindex(FEATURE_CATEGORY_ORDER["BP_Category"], fill_value=0)
+def chart_patients_by_bp_category(preprocessed_hypertension_data):
+    counts = preprocessed_hypertension_data["BP_Category"].value_counts().reindex(FEATURE_CATEGORY_ORDER["BP_Category"], fill_value=0)
     counts = counts.reset_index()
     counts.columns = ["BP_Category", "Patients"]
     fig = px.bar(counts, x="BP_Category", y="Patients", color="BP_Category", text_auto=True,
@@ -254,8 +316,7 @@ def show_hypertension_and_age_correlation_page():
 
 
 def build_and_display_hypertension_data_page():
-    st.title("Understanding Hypertension")
-    st.caption("")
+    st.subheader("Data Overview")
 
     sections = st.navigation([
         st.Page(show_hypertension_data_overview_page, title="Data overview"),
