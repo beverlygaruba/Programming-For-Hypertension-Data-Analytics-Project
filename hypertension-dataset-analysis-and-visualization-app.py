@@ -326,10 +326,25 @@ def chart_hypertension_rises_with_age(df):
     fig.update_yaxes(range=[0, 100])
     return fig
 
+def show_bp_category_and_age_visualization(preprocessed_hypertension_data):
+    choice = st.selectbox("Age group (years)", ["All ages"] + AGE_LABELS, index=4)
+
+    if choice == "All ages":
+        group = preprocessed_hypertension_data
+    else:
+        group = preprocessed_hypertension_data[preprocessed_hypertension_data["Age_Group"] == choice]
+
+    a, b, c = st.columns(3)
+    a.metric("Patients in this group", f"{len(group):,}")
+    b.metric("With hypertension", f"{group['Has_Hypertension'].mean() * 100:.1f}%")
+    c.metric("All patients", f"{preprocessed_hypertension_data['Has_Hypertension'].mean() * 100:.1f}%")
+    chart_patients_by_bp_category(group)
+
 def show_hypertension_and_age_correlation_page():
     st.subheader("Data Visualization")
     raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
     st.plotly_chart(chart_hypertension_rises_with_age(preprocessed_hypertension_data))
+    show_bp_category_and_age_visualization(preprocessed_hypertension_data)
 
 
 def build_and_display_hypertension_data_page():
