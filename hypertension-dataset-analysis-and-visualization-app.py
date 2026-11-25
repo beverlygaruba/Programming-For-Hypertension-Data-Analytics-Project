@@ -109,6 +109,7 @@ def preprocess_hypertension_data(hypertension_data):
 
     return hypertension_data
 
+@st.cache_data
 def load_and_preprocess_hypertension_data():
     file_path = "hypertension_dataset_5000.csv"
     raw_hypertension_data = export_hypertension_dataset_from_csv(file_path)
@@ -129,6 +130,7 @@ def resolve_column_name(name):
 
 
 def show_hypertension_data_overview_page():
+    st.subheader("Data Overview")
     raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
 
     st.write(
@@ -310,17 +312,30 @@ def chart_patients_by_bp_category(preprocessed_hypertension_data):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def chart_hypertension_rises_with_age(df):
+    table = df.groupby("Age_Group")["Has_Hypertension"].agg(["mean", "count"])
+    table["mean"] = (table["mean"] * 100).round(1)
+    table = table.reindex(AGE_LABELS).reset_index()
+    table.columns = ["Age_Group", "Hypertension_Rate", "Patients"]
+
+    fig = px.line(table, x="Age_Group", y="Hypertension_Rate", markers=True,
+                  text="Hypertension_Rate", hover_data=["Patients"],
+                  labels={"Age_Group": "Age group (years)",
+                          "Hypertension_Rate": "Patients with hypertension (%)"})
+    fig.update_traces(line_color="#E45756", textposition="top center", texttemplate="%{text}%")
+    fig.update_yaxes(range=[0, 100])
+    return fig
 
 def show_hypertension_and_age_correlation_page():
-    st.header("How Age Relates to Hypertension")
+    st.subheader("Data Visualization")
+    raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
+    st.plotly_chart(chart_hypertension_rises_with_age(preprocessed_hypertension_data))
 
 
 def build_and_display_hypertension_data_page():
-    st.subheader("Data Overview")
-
     sections = st.navigation([
         st.Page(show_hypertension_data_overview_page, title="Data overview"),
-        st.Page(show_hypertension_and_age_correlation_page, title="How Age Relates to Hypertension"),
+        st.Page(show_hypertension_and_age_correlation_page, title="Data Visualization"),
     ])
     sections.run()
 
