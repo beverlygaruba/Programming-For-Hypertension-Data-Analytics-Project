@@ -150,7 +150,7 @@ def show_hypertension_data_overview_page():
 
     show_summary_metrics(preprocessed_hypertension_data)
 
-    with st.expander("Who are the patients?", expanded=True):
+    with st.expander("Patients profile", expanded=True):
         show_chart_row(
             lambda: show_bar_chart(preprocessed_hypertension_data, "Age_Group"),
             lambda: show_pie_chart(preprocessed_hypertension_data, "Gender"),
@@ -167,8 +167,21 @@ def show_hypertension_data_overview_page():
         show_pie_chart(preprocessed_hypertension_data, "Family_History_HTN")
         st.caption(f"Share of patients who report a family history of hypertension. {DATA_NOTE}")
 
+    with st.expander("Distribution of body and blood measurements"):
+        show_chart_row(
+            lambda: histogram_chart(preprocessed_hypertension_data, "BMI"),
+            lambda: histogram_chart(preprocessed_hypertension_data, "Waist_Circumference_cm"),
+        )
+        show_chart_row(
+            lambda: histogram_chart(preprocessed_hypertension_data, "Sleep_Hours"),
+            lambda: histogram_chart(preprocessed_hypertension_data, "Fasting_Glucose_mg_dL"),
+        )
+        show_chart_row(
+            lambda: histogram_chart(preprocessed_hypertension_data, "Cholesterol_mg_dL"),
+            lambda: histogram_chart(preprocessed_hypertension_data, "Creatinine_mg_dL"),
+        )
 
-    with st.expander("What affects hypertension?"):
+    with st.expander("Lifestyle factors"):
         show_factor_section(preprocessed_hypertension_data, "Salt_Intake",  horizontal=True)
         show_factor_section(preprocessed_hypertension_data, "Physical_Activity")
         show_factor_section(preprocessed_hypertension_data, "Alcohol_Consumption", horizontal=True)
@@ -176,6 +189,12 @@ def show_hypertension_data_overview_page():
 
     with st.expander("Data quality and preprocessing"):
         show_data_quality_section(raw_hypertension_data, preprocessed_hypertension_data)
+
+
+def histogram_chart(preprocessed_hypertension_data, column):
+    chart =  px.histogram(preprocessed_hypertension_data, x=column, nbins=30, title=f"Distribution of {resolve_column_name(column)}",
+                        labels={column: resolve_column_name(column), "count": "Patients"})
+    st.plotly_chart(chart, use_container_width=True)
 
 
 def show_summary_metrics(preprocessed_hypertension_data):
