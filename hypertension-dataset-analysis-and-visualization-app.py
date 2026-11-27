@@ -16,6 +16,9 @@ LABELS = {
     "Cholesterol_mg_dL": "Cholesterol (mg/dL)", "Systolic_BP_mmHg": "Systolic BP (mmHg)", "Diastolic_BP_mmHg": "Diastolic BP (mmHg)", "Family_History_HTN": "Family history of hypertension",
 }
 DATA_NOTE = "*This is an observation from this dataset only, not an established medical fact.*"
+MEASUREMENTS = ["BMI", "Waist_Circumference_cm", "Sleep_Hours", "Creatinine_mg_dL",
+                "Fasting_Glucose_mg_dL", "Cholesterol_mg_dL", "Systolic_BP_mmHg", "Diastolic_BP_mmHg"]
+
 
 def export_hypertension_dataset_from_csv(data_set_file_path):
     try:
@@ -359,12 +362,33 @@ def show_bp_category_and_age_visualization(preprocessed_hypertension_data):
     c.metric("All patients", f"{preprocessed_hypertension_data['Has_Hypertension'].mean() * 100:.1f}%")
     chart_patients_by_bp_category(group)
 
+
+def show_age_blood_and_body_measurement_visualization(preprocessed_hypertension_data):
+    st.subheader("Body and blood measurements by age")
+    measure = st.selectbox("Measurement", MEASUREMENTS, index=6, format_func=resolve_column_name)
+    left, right = st.columns([3, 1])
+    left.plotly_chart(chart_age_and_measurement(preprocessed_hypertension_data, measure))
+    right.metric("Correlation with age", f"{preprocessed_hypertension_data['Age'].corr(preprocessed_hypertension_data[measure]):.2f}")
+    right.caption("+1 means it rises steadily with age, -1 means it falls, 0 means no straight-line link.")
+    st.write("")
+
+
+def chart_age_and_measurement(preprocessed_hypertension_data, measure):
+    table = preprocessed_hypertension_data.groupby(["Age_Group", "Hypertension"])[measure].mean().round(1).reset_index()
+
+    return px.line(table, x="Age_Group", y=measure, color="Hypertension", markers=True,
+                   category_orders={"Age_Group": AGE_LABELS, "Hypertension": ["No", "Yes"]},
+                   color_discrete_map=HTN_COLORS,
+                   title=f"Average {resolve_column_name(measure)} by age group",
+                   labels={"Age_Group": "Age group (years)", measure: "Average " + resolve_column_name(measure)})
+
+
 def show_hypertension_and_age_correlation_page():
     st.subheader("Data Visualization")
     raw_hypertension_data, preprocessed_hypertension_data = load_and_preprocess_hypertension_data()
     st.plotly_chart(chart_hypertension_rises_with_age(preprocessed_hypertension_data))
     show_bp_category_and_age_visualization(preprocessed_hypertension_data)
-
+    show_age_blood_and_body_measurement_visualization(preprocessed_hypertension_data)
 
 def build_and_display_hypertension_data_page():
     sections = st.navigation([
